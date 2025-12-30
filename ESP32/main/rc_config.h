@@ -9,6 +9,7 @@
 
 #ifndef WIFI_PASS
 #define WIFI_PASS ""
+#endif
 
 // STA connect behavior (used when SSID is present, or saved in NVS).
 #ifndef WIFI_STA_MAX_RETRY
@@ -26,18 +27,19 @@
 #endif
 
 // === mDNS ===
+#ifndef MDNS_INSTANCE
+#define MDNS_INSTANCE "ESP32-RC-CAR01"
+#endif
+
 // Hostname will be: http://<MDNS_HOSTNAME>.local/
 #ifndef MDNS_HOSTNAME
-#define MDNS_HOSTNAME "esp32-cam-rc"
+#define MDNS_HOSTNAME MDNS_INSTANCE
 #endif
 
-#ifndef MDNS_INSTANCE
-#define MDNS_INSTANCE "ESP32-CAM-RC"
-#endif
-#endif
+
 
 #ifndef AP_SSID
-#define AP_SSID "ESP32-CAM-RC"
+#define AP_SSID MDNS_INSTANCE
 #endif
 
 #ifndef AP_PASS
@@ -56,6 +58,20 @@
 // === Stream ===
 #ifndef STREAM_FPS
 #define STREAM_FPS 5
+#endif
+
+// Camera task behavior
+// CAM_INIT_MAX_RETRIES: 1 = single attempt, 0 = retry forever
+#ifndef CAM_INIT_MAX_RETRIES
+#define CAM_INIT_MAX_RETRIES 1
+#endif
+
+#ifndef CAM_INIT_RETRY_DELAY_MS
+#define CAM_INIT_RETRY_DELAY_MS 2000
+#endif
+
+#ifndef CAM_STREAM_IDLE_DELAY_MS
+#define CAM_STREAM_IDLE_DELAY_MS 200
 #endif
 
 // === Camera (AI Thinker ESP32-CAM pinout) ===

@@ -21,13 +21,13 @@
 
 #include "rc_config.h"
 
-static const char *TAG = "esp32-cam-rc";
+static const char *TAG = MDNS_INSTANCE;
 
 static httpd_handle_t httpServer = NULL;
 static httpd_handle_t provisionServer = NULL;
 static uint8_t controlState[RC_CONTROL_LEN] = {0};
 
-static bool camera_ok = false;
+static volatile bool camera_ok = false;
 static bool wifi_handlers_registered = false;
 static bool wifi_stack_initialized = false;
 static esp_netif_t *wifi_netif_sta = NULL;
@@ -799,21 +799,75 @@ static void broadcast_jpeg_frame(httpd_handle_t server, const uint8_t *data, siz
 	}
 }
 
-static void stream_task(void *arg)
+static bool ws_has_clients(httpd_handle_t server)
+{
+	if (!server)
+		return false;
+
+	int client_fds[8];
+	size_t client_fd_count = sizeof(client_fds) / sizeof(client_fds[0]);
+	if (httpd_get_client_list(server, &client_fd_count, client_fds) != ESP_OK)
+		return false;
+
+	for (size_t i = 0; i < client_fd_count; i++)
+	{
+		const int fd = client_fds[i];
+		if (httpd_ws_get_fd_info(server, fd) == HTTPD_WS_CLIENT_WEBSOCKET)
+			return true;
+	}
+
+	return false;
+}
+
+static void camera_stream_task(void *arg)
 {
 	(void)arg;
+
+	int retries_left = CAM_INIT_MAX_RETRIES;
+	while (retries_left != 0)
+	{
+		const esp_err_t cam_err = init_camera();
+		if (cam_err == ESP_OK)
+		{
+			camera_ok = true;
+			ESP_LOGI(TAG, "Camera ready");
+			break;
+		}
+
+		camera_ok = false;
+		ESP_LOGE(TAG, "Camera init failed: %s", esp_err_to_name(cam_err));
+
+		if (retries_left > 0)
+			retries_left--;
+		if (retries_left == 0)
+			break;
+
+		vTaskDelay(pdMS_TO_TICKS(CAM_INIT_RETRY_DELAY_MS));
+	}
+
+	if (!camera_ok)
+	{
+		ESP_LOGW(TAG, "Camera task stopped (camera not available)");
+		vTaskDelete(NULL);
+		return;
+	}
+
 	while (true)
 	{
-		if (httpServer && camera_ok)
+		const httpd_handle_t server = httpServer;
+		if (server && ws_has_clients(server))
 		{
 			camera_fb_t *fb = esp_camera_fb_get();
 			if (fb)
 			{
-				broadcast_jpeg_frame(httpServer, fb->buf, fb->len);
+				broadcast_jpeg_frame(server, fb->buf, fb->len);
 				esp_camera_fb_return(fb);
 			}
+			vTaskDelay(pdMS_TO_TICKS(frame_interval_ms()));
+			continue;
 		}
-		vTaskDelay(pdMS_TO_TICKS(frame_interval_ms()));
+
+		vTaskDelay(pdMS_TO_TICKS(CAM_STREAM_IDLE_DELAY_MS));
 	}
 }
 
@@ -873,18 +927,6 @@ void app_main(void)
 		ESP_LOGI(TAG, "Open http://192.168.4.1/ to configure Wi-Fi");
 	}
 
-	esp_err_t cam_err = init_camera();
-	if (cam_err == ESP_OK)
-	{
-		camera_ok = true;
-		ESP_LOGI(TAG, "Camera ready");
-	}
-	else
-	{
-		camera_ok = false;
-		ESP_LOGE(TAG, "Camera init failed: %s", esp_err_to_name(cam_err));
-	}
-
 	ESP_ERROR_CHECK(start_http_ws_server());
-	xTaskCreate(stream_task, "stream_task", 4096, NULL, 5, NULL);
+	xTaskCreate(camera_stream_task, "camera_task", 6144, NULL, 5, NULL);
 }
