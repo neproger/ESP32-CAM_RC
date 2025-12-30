@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.example.myapplication.databinding.FragmentSecondBinding
 
@@ -19,14 +20,13 @@ class SecondFragment : Fragment() {
 
     private var webSocketClient: WebSocketClient? = null
     
-    // Состояние кнопок: [Вперед, Назад, Влево, Вправо, Стоп]
     private val controlState = ByteArray(5) { 0 }
     
     private val handler = Handler(Looper.getMainLooper())
     private val sendRunnable = object : Runnable {
         override fun run() {
             webSocketClient?.send(controlState)
-            handler.postDelayed(this, 50) // Отправка каждые 50мс (20 Гц)
+            handler.postDelayed(this, 50)
         }
     }
 
@@ -44,12 +44,17 @@ class SecondFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val ip = arguments?.getString("device_ip") ?: return
+        val deviceName = arguments?.getString("device_name") ?: getString(R.string.default_device_name)
+        
+        // Dynamic title update
+        (activity as? AppCompatActivity)?.supportActionBar?.title = deviceName
+
         val wsUrl = "ws://$ip:8888"
 
         webSocketClient = WebSocketClient(
             onMessage = { text ->
                 activity?.runOnUiThread { 
-                    _binding?.textViewStatus?.text = "Телеметрия: $text" 
+                    _binding?.textViewStatus?.text = getString(R.string.status_telemetry, text) 
                 }
             },
             onImageReceived = { bitmap ->
@@ -59,20 +64,21 @@ class SecondFragment : Fragment() {
             },
             onStatusChange = { isConnected ->
                 activity?.runOnUiThread {
-                    _binding?.textViewStatus?.text = if (isConnected) "Статус: Подключено ✅" else "Статус: Поиск... ⏳"
+                    _binding?.textViewStatus?.text = if (isConnected) 
+                        getString(R.string.status_connected) 
+                    else 
+                        getString(R.string.status_searching)
                 }
             }
         )
         webSocketClient?.connect(wsUrl)
 
-        // Настраиваем обработку зажатия кнопок
         setupButton(binding.btnUp, 0)
         setupButton(binding.btnDown, 1)
         setupButton(binding.btnLeft, 2)
         setupButton(binding.btnRight, 3)
         setupButton(binding.btnStop, 4)
 
-        // Запускаем цикл непрерывной отправки
         handler.post(sendRunnable)
     }
 

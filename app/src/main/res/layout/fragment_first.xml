@@ -11,7 +11,7 @@
         android:id="@+id/button_scan"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Сканировать сеть (mDNS)"
+        android:text="@string/button_scan_label"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -21,7 +21,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="— ИЛИ —"
+        android:text="@string/label_or"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/button_scan" />
@@ -31,7 +31,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="Введите IP ESP32 (например 192.168.0.105)"
+        android:hint="@string/hint_manual_ip"
         app:layout_constraintEnd_toStartOf="@+id/button_connect_manual"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/textView_or">
@@ -40,8 +40,8 @@
             android:id="@+id/editText_ip"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="text"
-            android:text="192.168.0.105" />
+            android:inputType="numberDecimal"
+            android:digits="0123456789." />
     </com.google.android.material.textfield.TextInputLayout>
 
     <Button
@@ -49,7 +49,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
-        android:text="ОК"
+        android:text="@string/button_ok"
         app:layout_constraintBottom_toBottomOf="@+id/inputLayout_ip"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/inputLayout_ip"

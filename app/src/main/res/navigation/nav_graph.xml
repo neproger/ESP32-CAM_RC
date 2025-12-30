@@ -18,8 +18,15 @@
     <fragment
         android:id="@+id/SecondFragment"
         android:name="com.example.myapplication.SecondFragment"
-        android:label="@string/second_fragment_label"
+        android:label="{device_name}"
         tools:layout="@layout/fragment_second">
+        <argument
+            android:name="device_ip"
+            app:argType="string" />
+        <argument
+            android:name="device_name"
+            android:defaultValue="ESP32-CAM"
+            app:argType="string" />
 
         <action
             android:id="@+id/action_SecondFragment_to_FirstFragment"
