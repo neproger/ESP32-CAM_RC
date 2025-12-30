@@ -17,3 +17,20 @@ local.properties
 # Игнорируем зависимости Node.js, но сохраняем сам сервер
 app/ESP32_TEST_SERVER/node_modules/
 app/ESP32_TEST_SERVER/package-lock.json
+
+# PlatformIO (ESP32 firmware)
+ESP32/.pio/
+ESP32/.vscode/
+ESP32/.clangd/
+ESP32/.cache/
+
+# ESP-IDF (ESP32 firmware)
+ESP32/build/
+ESP32/sdkconfig
+ESP32/sdkconfig.old
+ESP32/dependencies.lock
+ESP32/managed_components/
+
+# Actual mock server location (repo root)
+ESP32_TEST_SERVER/node_modules/
+ESP32_TEST_SERVER/package-lock.json

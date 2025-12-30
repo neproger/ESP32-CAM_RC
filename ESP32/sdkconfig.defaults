@@ -1,0 +1,10 @@
+# Keep logs modest by default
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# Enable HTTP server WebSocket support
+CONFIG_HTTPD_WS_SUPPORT=y
+
+# Reasonable LWIP/WiFi defaults
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=10
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32
+

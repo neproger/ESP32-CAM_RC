@@ -1,0 +1,8 @@
+dependencies:
+  # Provides esp_camera.h / esp_camera_init() for ESP32-CAM boards.
+  # ESP-IDF Component Manager will fetch it on first build.
+  esp32-camera:
+    git: https://github.com/espressif/esp32-camera.git
+
+  # mDNS (moved out of ESP-IDF core in recent versions)
+  espressif/mdns: "^1.0.0"
