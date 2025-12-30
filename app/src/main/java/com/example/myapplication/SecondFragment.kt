@@ -48,14 +48,18 @@ class SecondFragment : Fragment() {
 
         webSocketClient = WebSocketClient(
             onMessage = { text ->
-                activity?.runOnUiThread { binding.textViewStatus.text = "Телеметрия: $text" }
+                activity?.runOnUiThread { 
+                    _binding?.textViewStatus?.text = "Телеметрия: $text" 
+                }
             },
             onImageReceived = { bitmap ->
-                activity?.runOnUiThread { binding.imageViewVideo.setImageBitmap(bitmap) }
+                activity?.runOnUiThread { 
+                    _binding?.imageViewVideo?.setImageBitmap(bitmap) 
+                }
             },
             onStatusChange = { isConnected ->
                 activity?.runOnUiThread {
-                    binding.textViewStatus.text = if (isConnected) "Статус: Подключено ✅" else "Статус: Поиск... ⏳"
+                    _binding?.textViewStatus?.text = if (isConnected) "Статус: Подключено ✅" else "Статус: Поиск... ⏳"
                 }
             }
         )
