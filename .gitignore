@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Игнорируем зависимости Node.js, но сохраняем сам сервер
+app/ESP32_TEST_SERVER/node_modules/
+app/ESP32_TEST_SERVER/package-lock.json
