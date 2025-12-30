@@ -1,23 +1,21 @@
 package com.example.myapplication
 
-import android.net.nsd.NsdServiceInfo
+import android.os.Build
 import android.os.Bundle
-import android.util.Log
-import com.google.android.material.snackbar.Snackbar
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
 import com.example.myapplication.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
-    private lateinit var mdnsHelper: MdnsHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,43 +23,33 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Мы ДОЛЖНЫ установить поддержку Toolbar, так как Navigation UI полагается на него
         setSupportActionBar(binding.toolbar)
+
+        // Теперь скрываем его визуально
+        supportActionBar?.hide()
+
+        // Включаем полноэкранный режим
+        hideSystemUI()
 
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
+    }
 
-        mdnsHelper = MdnsHelper(this) { serviceInfo ->
-            runOnUiThread {
-                val ip = serviceInfo.host.hostAddress
-                val name = serviceInfo.serviceName
-                Snackbar.make(binding.root, "Найдено: $name ($ip)", Snackbar.LENGTH_LONG)
-                    .setAnchorView(R.id.fab).show()
-                Log.d("MainActivity", "ESP32 found at $ip")
+    private fun hideSystemUI() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+            window.insetsController?.let { controller ->
+                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
-        }
-
-        binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Поиск ESP32...", Snackbar.LENGTH_SHORT)
-                .setAnchorView(R.id.fab).show()
-            mdnsHelper.startDiscovery()
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        mdnsHelper.stopDiscovery()
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> true
-            else -> super.onOptionsItemSelected(item)
+        } else {
+            @Suppress("DEPRECATION")
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
         }
     }
 

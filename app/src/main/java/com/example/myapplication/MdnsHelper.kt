@@ -3,28 +3,33 @@ package com.example.myapplication
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import android.net.wifi.WifiManager
 import android.util.Log
 
 class MdnsHelper(context: Context, private val onDeviceFound: (NsdServiceInfo) -> Unit) {
 
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
-    private val serviceType = "_http._tcp." // Стандарт для ESP32 web-сервера
+    private val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    private var multicastLock: WifiManager.MulticastLock? = null
+    
+    // Стандартный тип сервиса для вашей машинки
+    private val serviceType = "_esp_rc._tcp." 
 
     private val discoveryListener = object : NsdManager.DiscoveryListener {
         override fun onDiscoveryStarted(regType: String) {
-            Log.d("MdnsHelper", "Discovery started")
+            Log.d("mDNS", "Поиск запущен: $regType")
         }
 
         override fun onServiceFound(service: NsdServiceInfo) {
-            Log.d("MdnsHelper", "Service found: ${service.serviceName}")
-            if (service.serviceType == serviceType || service.serviceType == "$serviceType.") {
+            // Резолвим только наш тип сервиса
+            if (service.serviceType.contains("esp_rc")) {
                 nsdManager.resolveService(service, object : NsdManager.ResolveListener {
                     override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-                        Log.e("MdnsHelper", "Resolve failed: $errorCode")
+                        Log.e("mDNS", "Ошибка разрешения адреса: $errorCode")
                     }
 
                     override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-                        Log.d("MdnsHelper", "Service resolved: ${serviceInfo.host.hostAddress}")
+                        Log.d("mDNS", "Устройство найдено: ${serviceInfo.host.hostAddress}")
                         onDeviceFound(serviceInfo)
                     }
                 })
@@ -32,33 +37,27 @@ class MdnsHelper(context: Context, private val onDeviceFound: (NsdServiceInfo) -
         }
 
         override fun onServiceLost(service: NsdServiceInfo) {
-            Log.d("MdnsHelper", "Service lost: ${service.serviceName}")
+            Log.d("mDNS", "Устройство потеряно")
         }
 
-        override fun onDiscoveryStopped(regType: String) {
-            Log.d("MdnsHelper", "Discovery stopped")
-        }
-
-        override fun onStartDiscoveryFailed(regType: String, errorCode: Int) {
-            Log.e("MdnsHelper", "Start discovery failed: $errorCode")
-            stopDiscovery()
-        }
-
-        override fun onStopDiscoveryFailed(regType: String, errorCode: Int) {
-            Log.e("MdnsHelper", "Stop discovery failed: $errorCode")
-            nsdManager.stopServiceDiscovery(this)
-        }
+        override fun onDiscoveryStopped(regType: String) {}
+        override fun onStartDiscoveryFailed(regType: String, errorCode: Int) { stopDiscovery() }
+        override fun onStopDiscoveryFailed(regType: String, errorCode: Int) {}
     }
 
     fun startDiscovery() {
+        if (multicastLock == null) {
+            multicastLock = wifiManager.createMulticastLock("MdnsLock")
+            multicastLock?.setReferenceCounted(true)
+        }
+        multicastLock?.acquire()
         nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
     }
 
     fun stopDiscovery() {
         try {
             nsdManager.stopServiceDiscovery(discoveryListener)
-        } catch (e: Exception) {
-            Log.e("MdnsHelper", "Error stopping discovery", e)
-        }
+            if (multicastLock?.isHeld == true) multicastLock?.release()
+        } catch (e: Exception) {}
     }
 }

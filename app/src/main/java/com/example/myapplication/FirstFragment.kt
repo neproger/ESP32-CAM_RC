@@ -4,14 +4,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.myapplication.databinding.FragmentFirstBinding
 
-/**
- * A simple [Fragment] subclass as the default destination in the navigation.
- */
 class FirstFragment : Fragment() {
 
     private var _binding: FragmentFirstBinding? = null
@@ -32,11 +30,10 @@ class FirstFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         deviceAdapter = DeviceAdapter { serviceInfo ->
-            val ip = serviceInfo.host.hostAddress
-            val bundle = Bundle().apply {
-                putString("device_ip", ip)
+            val ip = serviceInfo.host?.hostAddress
+            if (ip != null) {
+                navigateToControl(ip)
             }
-            findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
         }
 
         binding.recyclerViewDevices.apply {
@@ -55,7 +52,25 @@ class FirstFragment : Fragment() {
             deviceAdapter.clear()
             binding.progressBar.visibility = View.VISIBLE
             mdnsHelper.startDiscovery()
+            Toast.makeText(context, "Поиск запущен...", Toast.LENGTH_SHORT).show()
         }
+
+        // РУЧНОЙ ВВОД IP
+        binding.buttonConnectManual.setOnClickListener {
+            val ip = binding.editTextIp.text.toString().trim()
+            if (ip.isNotEmpty()) {
+                navigateToControl(ip)
+            } else {
+                Toast.makeText(context, "Введите IP адрес", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun navigateToControl(ip: String) {
+        val bundle = Bundle().apply {
+            putString("device_ip", ip)
+        }
+        findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
     }
 
     override fun onPause() {
