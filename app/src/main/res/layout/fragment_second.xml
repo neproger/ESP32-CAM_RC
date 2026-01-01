@@ -11,11 +11,14 @@
         android:id="@+id/imageView_video"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:contentDescription="@string/cd_video_stream"
         android:scaleType="centerInside"
         app:layout_constraintBottom_toTopOf="@+id/guideline_horizontal"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"
         tools:srcCompat="@tools:sample/backgrounds/scenic" />
 
     <androidx.constraintlayout.widget.Guideline
@@ -25,94 +28,121 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_percent="0.5" />
 
-    <GridLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:columnCount="4"
-        android:rowCount="3"
-        android:useDefaultMargins="true"
+    <SeekBar
+        android:id="@+id/seekBar"
+        style="@style/Widget.AppCompat.SeekBar.Discrete"
+        android:layout_width="350dp"
+        android:layout_height="60dp"
+        android:contentDescription="Steering"
+        android:max="10"
+        android:progress="5"
+        android:progressDrawable="@drawable/steering_track"
+        android:progressTintMode="multiply"
+        android:splitTrack="false"
+        android:thumb="@drawable/steering_thumb"
+        android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/guideline_horizontal">
+        app:layout_constraintTop_toBottomOf="@+id/gridLayout" />
 
-        <!-- ВПЕРЕД -->
+    <GridLayout
+        android:id="@+id/gridLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:columnCount="4"
+        android:rowCount="3"
+        android:useDefaultMargins="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.487"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageView_video">
 
-        <!-- ВЛЕВО -->
+        <!-- UP -->
+
+        <!-- LEFT -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_up"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
+            style="@style/Widget.MaterialComponents.Button.Icon"
+            android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_row="0"
             android:layout_column="0"
+            android:contentDescription="@string/cd_up"
             android:stateListAnimator="@animator/button_press"
-            app:icon="@android:drawable/stat_sys_upload_done"
+            app:icon="@drawable/up"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="32dp"
-            app:strokeColor="#FFFFFF" />
+            app:iconTint="#FFFFFF" />
 
-        <!-- СТОП -->
+        <!-- STOP -->
 
-        <!-- ВПРАВО -->
+        <!-- RIGHT -->
 
-        <!-- НАЗАД -->
+        <!-- DOWN -->
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_left"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
+            style="@style/Widget.MaterialComponents.Button.Icon"
+            android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_row="2"
             android:layout_column="2"
+            android:contentDescription="@string/cd_left"
             android:stateListAnimator="@animator/button_press"
-            app:icon="@android:drawable/ic_media_rew"
+            app:icon="@drawable/left"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="32dp"
-            app:strokeColor="#FFFFFF" />
+            app:iconTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_stop"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="wrap_content"
+            style="@style/Widget.MaterialComponents.Button.Icon"
+            android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_row="0"
             android:layout_column="1"
-            android:backgroundTint="#FF0000"
+            android:contentDescription="@string/cd_stop"
             android:stateListAnimator="@animator/button_press"
-            app:icon="@android:drawable/ic_menu_close_clear_cancel"
+            app:backgroundTint="#FF5252"
+            app:icon="@drawable/stop"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
-            app:iconSize="32dp" />
+            app:iconSize="32dp"
+            app:iconTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_right"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
+            style="@style/Widget.MaterialComponents.Button.Icon"
+            android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_row="2"
             android:layout_column="3"
+            android:contentDescription="@string/cd_right"
             android:stateListAnimator="@animator/button_press"
-            app:icon="@android:drawable/ic_media_ff"
+            app:icon="@drawable/right"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="32dp"
-            app:strokeColor="#FFFFFF" />
+            app:iconTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_down"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
+            style="@style/Widget.MaterialComponents.Button.Icon"
+            android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_row="1"
             android:layout_column="0"
+            android:contentDescription="@string/cd_down"
             android:stateListAnimator="@animator/button_press"
-            app:icon="@android:drawable/stat_sys_download"
+            app:icon="@drawable/down"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="32dp"
-            app:strokeColor="#FFFFFF" />
+            app:iconTint="#FFFFFF" />
     </GridLayout>
 
     <TextView
@@ -122,7 +152,7 @@
         android:layout_margin="16dp"
         android:background="#80000000"
         android:padding="8dp"
-        android:text="Статус: Подключение..."
+        android:text="@string/status_searching"
         android:textColor="#FFFFFF"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />

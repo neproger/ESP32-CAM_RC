@@ -113,7 +113,7 @@ static void log_wifi_password(const char *context, const char *pass)
 	}
 	else
 	{
-		ESP_LOGI(TAG, "%s: pass_len=%u pass_mask='%c***%c'", context, (unsigned)len, pass[0],
+		ESP_LOGI(TAG, "%s: pass_len=%u pass_mask='%c***%c'", context, pass[0],
 				 pass[len - 1]);
 	}
 #endif
@@ -738,8 +738,8 @@ static esp_err_t ws_root_handler(httpd_req_t *req)
 		if (memcmp(controlState, payload, RC_CONTROL_LEN) != 0)
 		{
 			memcpy(controlState, payload, RC_CONTROL_LEN);
-			ESP_LOGI(TAG, "[RC State] UP:%u DOWN:%u LEFT:%u RIGHT:%u STOP:%u", controlState[0],
-					 controlState[1], controlState[2], controlState[3], controlState[4]);
+			ESP_LOGI(TAG, "[RC State] UP:%u DOWN:%u LEFT:%u RIGHT:%u STOP:%u STEER:%u", controlState[0],
+					 controlState[1], controlState[2], controlState[3], controlState[4], controlState[5]);
 		}
 	}
 	else if (frame.type == HTTPD_WS_TYPE_TEXT)

@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.example.myapplication.databinding.FragmentSecondBinding
@@ -20,7 +21,8 @@ class SecondFragment : Fragment() {
 
     private var webSocketClient: WebSocketClient? = null
     
-    private val controlState = ByteArray(5) { 0 }
+    // Состояние управления: [Вперед, Назад, Влево, Вправо, Стоп, Руль(0-10)]
+    private val controlState = ByteArray(6) { 0 }.apply { this[5] = 5 } // Центр — 5
     
     private val handler = Handler(Looper.getMainLooper())
     private val sendRunnable = object : Runnable {
@@ -46,7 +48,6 @@ class SecondFragment : Fragment() {
         val ip = arguments?.getString("device_ip") ?: return
         val deviceName = arguments?.getString("device_name") ?: getString(R.string.default_device_name)
         
-        // Dynamic title update
         (activity as? AppCompatActivity)?.supportActionBar?.title = deviceName
 
         val wsUrl = "ws://$ip:8888"
@@ -73,6 +74,22 @@ class SecondFragment : Fragment() {
         )
         webSocketClient?.connect(wsUrl)
 
+        // Настройка SeekBar (Руль)
+        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                controlState[5] = progress.toByte()
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                // Возврат в центр при отпускании
+                seekBar?.progress = 5
+                controlState[5] = 5
+            }
+        })
+
+        // Настраиваем кнопки
         setupButton(binding.btnUp, 0)
         setupButton(binding.btnDown, 1)
         setupButton(binding.btnLeft, 2)
@@ -84,10 +101,16 @@ class SecondFragment : Fragment() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupButton(button: View, index: Int) {
-        button.setOnTouchListener { _, event ->
+        button.setOnTouchListener { v, event ->
             when (event.action) {
-                MotionEvent.ACTION_DOWN -> controlState[index] = 1
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> controlState[index] = 0
+                MotionEvent.ACTION_DOWN -> {
+                    controlState[index] = 1
+                    v.isPressed = true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    controlState[index] = 0
+                    v.isPressed = false
+                }
             }
             true
         }

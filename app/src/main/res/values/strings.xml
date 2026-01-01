@@ -23,5 +23,12 @@
     <!-- General -->
     <string name="default_device_name">ESP32-CAM</string>
     <string name="manual_ip_name">Manual IP</string>
+<!-- Accessibility descriptions -->
+    <string name="cd_up">Drive forward</string>
+    <string name="cd_down">Drive backward</string>
+    <string name="cd_left">Turn left</string>
+    <string name="cd_right">Turn right</string>
+    <string name="cd_stop">Stop</string>
+    <string name="cd_video_stream">Live video stream from camera</string>
 
 </resources>

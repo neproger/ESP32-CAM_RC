@@ -52,8 +52,8 @@
 #define RC_WS_PORT 8888
 #endif
 
-// Control bytes: [UP, DOWN, LEFT, RIGHT, STOP]
-#define RC_CONTROL_LEN 5
+// Control bytes: [UP, DOWN, LEFT, RIGHT, STOP, STEER]
+#define RC_CONTROL_LEN 6
 
 // === Stream ===
 #ifndef STREAM_FPS
