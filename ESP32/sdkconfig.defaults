@@ -8,3 +8,5 @@ CONFIG_HTTPD_WS_SUPPORT=y
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=10
 CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32
 
+# Let libraries using plain malloc() (e.g. JPEG encoder) allocate big buffers in PSRAM.
+CONFIG_SPIRAM_USE_MALLOC=y

@@ -57,7 +57,25 @@
 
 // === Stream ===
 #ifndef STREAM_FPS
-#define STREAM_FPS 5
+#define STREAM_FPS 25
+#endif
+
+// Stream modes:
+// - `CAM_STREAM_MODE_JPEG`: send binary JPEG frames (GC2145 uses software JPEG).
+// - `CAM_STREAM_MODE_RGB565_RAW`: send RAW RGB565 frames with "RAWH" header.
+// - `CAM_STREAM_MODE_GRAY8`: send RAW GRAY8 frames with "RAWH" header (format=1).
+#define CAM_STREAM_MODE_JPEG 0
+#define CAM_STREAM_MODE_RGB565_RAW 1
+#define CAM_STREAM_MODE_GRAY8 2
+
+#ifndef CAM_STREAM_MODE
+#define CAM_STREAM_MODE CAM_STREAM_MODE_JPEG
+#endif
+
+// Software JPEG encoding quality (used when the sensor can't output JPEG, e.g. GC2145).
+// Range: 1..100 (higher = better quality, larger frames, more CPU).
+#ifndef CAM_SW_JPEG_QUALITY
+#define CAM_SW_JPEG_QUALITY 80
 #endif
 
 // Camera task behavior

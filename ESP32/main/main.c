@@ -11,13 +11,14 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
-#include "esp_psram.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "mdns.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+
+#include "img_converters.h"
 
 #include "rc_config.h"
 
@@ -309,25 +310,40 @@ static esp_err_t init_camera(void)
 		.pin_pwdn = CAM_PIN_PWDN,
 		.pin_reset = CAM_PIN_RESET,
 		.xclk_freq_hz = 20000000,
-		.pixel_format = PIXFORMAT_JPEG,
+		.pixel_format =
+#if (CAM_STREAM_MODE == CAM_STREAM_MODE_RGB565_RAW) || (CAM_STREAM_MODE == CAM_STREAM_MODE_GRAY8)
+			PIXFORMAT_RGB565,
+#else
+			PIXFORMAT_JPEG,
+#endif
 		.frame_size = FRAMESIZE_QVGA,
 		.jpeg_quality = 12,
 		.fb_count = 2,
+		.fb_location = CAMERA_FB_IN_PSRAM,
+		.grab_mode = CAMERA_GRAB_WHEN_EMPTY,
 	};
 
-	bool has_psram = false;
-#if CONFIG_SPIRAM
-	has_psram = esp_psram_is_initialized();
-#endif
-
-	if (!has_psram)
+	esp_err_t err = esp_camera_init(&config);
+#if (CAM_STREAM_MODE != CAM_STREAM_MODE_RGB565_RAW) && (CAM_STREAM_MODE != CAM_STREAM_MODE_GRAY8)
+	if (err == ESP_ERR_NOT_SUPPORTED && config.pixel_format == PIXFORMAT_JPEG)
 	{
-		config.frame_size = FRAMESIZE_QQVGA;
-		config.jpeg_quality = 14;
-		config.fb_count = 1;
+		ESP_LOGW(TAG, "Sensor does not support JPEG, retrying with RGB565 + software JPEG");
+		(void)esp_camera_deinit();
+		config.pixel_format = PIXFORMAT_RGB565;
+		err = esp_camera_init(&config);
 	}
-
-	return esp_camera_init(&config);
+#endif
+	if (err != ESP_OK && config.fb_location == CAMERA_FB_IN_PSRAM)
+	{
+		ESP_LOGW(TAG, "Camera init failed with PSRAM fb, retrying with DRAM fb");
+		(void)esp_camera_deinit();
+		config.fb_location = CAMERA_FB_IN_DRAM;
+		config.fb_count = 1;
+		if (config.frame_size > FRAMESIZE_QQVGA)
+			config.frame_size = FRAMESIZE_QQVGA;
+		err = esp_camera_init(&config);
+	}
+	return err;
 }
 
 static void wifi_init_common(void)
@@ -775,8 +791,11 @@ static esp_err_t start_http_ws_server(void)
 	return ESP_OK;
 }
 
-static void broadcast_jpeg_frame(httpd_handle_t server, const uint8_t *data, size_t len)
+static void ws_broadcast_binary_sync(httpd_handle_t server, const uint8_t *data, size_t len)
 {
+	if (!server || !data || len == 0)
+		return;
+
 	int client_fds[8];
 	size_t client_fd_count = sizeof(client_fds) / sizeof(client_fds[0]);
 	if (httpd_get_client_list(server, &client_fd_count, client_fds) != ESP_OK)
@@ -795,8 +814,91 @@ static void broadcast_jpeg_frame(httpd_handle_t server, const uint8_t *data, siz
 		const int fd = client_fds[i];
 		if (httpd_ws_get_fd_info(server, fd) != HTTPD_WS_CLIENT_WEBSOCKET)
 			continue;
-		(void)httpd_ws_send_frame_async(server, fd, &frame);
+		(void)httpd_ws_send_data(server, fd, &frame);
 	}
+}
+
+static void ws_broadcast_raw_sync(httpd_handle_t server, uint8_t raw_format, uint16_t width, uint16_t height,
+								  const uint8_t *payload, size_t payload_len)
+{
+	if (!server || !payload || payload_len == 0 || width == 0 || height == 0)
+		return;
+
+	uint8_t header[14] = {0};
+	// magic "RAWH" + version(1) + format(1) + w(u16 LE) + h(u16 LE) + len(u32 LE)
+	header[0] = 'R';
+	header[1] = 'A';
+	header[2] = 'W';
+	header[3] = 'H';
+	header[4] = 1; // version
+	header[5] = raw_format; // 0 = RGB565, 1 = GRAY8
+	header[6] = (uint8_t)(width & 0xFF);
+	header[7] = (uint8_t)((width >> 8) & 0xFF);
+	header[8] = (uint8_t)(height & 0xFF);
+	header[9] = (uint8_t)((height >> 8) & 0xFF);
+	header[10] = (uint8_t)(payload_len & 0xFF);
+	header[11] = (uint8_t)((payload_len >> 8) & 0xFF);
+	header[12] = (uint8_t)((payload_len >> 16) & 0xFF);
+	header[13] = (uint8_t)((payload_len >> 24) & 0xFF);
+
+	ws_broadcast_binary_sync(server, header, sizeof(header));
+	ws_broadcast_binary_sync(server, payload, payload_len);
+}
+
+static void ws_broadcast_raw_rgb565_from_fb(httpd_handle_t server, const camera_fb_t *fb)
+{
+	if (!server || !fb || !fb->buf || fb->len == 0)
+		return;
+	if (fb->format != PIXFORMAT_RGB565)
+		return;
+
+	const size_t bytes_per_pixel = 2;
+	const size_t row_bytes = fb->width * bytes_per_pixel;
+	const uint16_t effective_height =
+		(uint16_t)((row_bytes > 0) ? (fb->len / row_bytes) : (size_t)fb->height);
+	const size_t effective_len = row_bytes * (size_t)effective_height;
+	if (effective_height == 0 || effective_len == 0)
+		return;
+
+	ws_broadcast_raw_sync(server, 0, (uint16_t)fb->width, effective_height, fb->buf, effective_len);
+}
+
+static void ws_broadcast_raw_gray8_from_fb(httpd_handle_t server, const camera_fb_t *fb)
+{
+	if (!server || !fb || !fb->buf || fb->len == 0)
+		return;
+	if (fb->format != PIXFORMAT_RGB565)
+		return;
+
+	const size_t bytes_per_pixel = 2;
+	const size_t row_bytes = fb->width * bytes_per_pixel;
+	const uint16_t effective_height =
+		(uint16_t)((row_bytes > 0) ? (fb->len / row_bytes) : (size_t)fb->height);
+	const size_t pixel_count = (size_t)fb->width * (size_t)effective_height;
+	const size_t effective_len = row_bytes * (size_t)effective_height;
+	if (effective_height == 0 || effective_len == 0 || pixel_count == 0)
+		return;
+
+	uint8_t *gray = (uint8_t *)malloc(pixel_count);
+	if (!gray)
+		return;
+
+	// RGB565 is typically MSB-first in ESP32 camera buffers.
+	for (size_t i = 0, p = 0; i + 1 < effective_len && p < pixel_count; i += 2, p++)
+	{
+		const uint16_t pix = ((uint16_t)fb->buf[i] << 8) | (uint16_t)fb->buf[i + 1];
+		const uint8_t r5 = (uint8_t)((pix >> 11) & 0x1F);
+		const uint8_t g6 = (uint8_t)((pix >> 5) & 0x3F);
+		const uint8_t b5 = (uint8_t)(pix & 0x1F);
+		const uint8_t r8 = (uint8_t)((r5 << 3) | (r5 >> 2));
+		const uint8_t g8 = (uint8_t)((g6 << 2) | (g6 >> 4));
+		const uint8_t b8 = (uint8_t)((b5 << 3) | (b5 >> 2));
+		const uint16_t y = (uint16_t)r8 * 77 + (uint16_t)g8 * 150 + (uint16_t)b8 * 29;
+		gray[p] = (uint8_t)(y >> 8);
+	}
+
+	ws_broadcast_raw_sync(server, 1, (uint16_t)fb->width, effective_height, gray, pixel_count);
+	free(gray);
 }
 
 static bool ws_has_clients(httpd_handle_t server)
@@ -860,7 +962,41 @@ static void camera_stream_task(void *arg)
 			camera_fb_t *fb = esp_camera_fb_get();
 			if (fb)
 			{
-				broadcast_jpeg_frame(server, fb->buf, fb->len);
+#if (CAM_STREAM_MODE == CAM_STREAM_MODE_RGB565_RAW)
+				ws_broadcast_raw_rgb565_from_fb(server, fb);
+#elif (CAM_STREAM_MODE == CAM_STREAM_MODE_GRAY8)
+				ws_broadcast_raw_gray8_from_fb(server, fb);
+#else
+				if (fb->format == PIXFORMAT_JPEG)
+				{
+					ws_broadcast_binary_sync(server, fb->buf, fb->len);
+				}
+				else
+				{
+					const size_t bytes_per_pixel = (fb->format == PIXFORMAT_RGB565) ? 2 : 0;
+					const size_t row_bytes = fb->width * bytes_per_pixel;
+					const size_t effective_height =
+						(row_bytes > 0) ? (fb->len / row_bytes) : (size_t)fb->height;
+					const size_t effective_len = row_bytes * effective_height;
+
+					uint8_t *jpg_buf = NULL;
+					size_t jpg_len = 0;
+					const bool ok = (bytes_per_pixel > 0) &&
+									fmt2jpg(fb->buf, effective_len, fb->width, effective_height, fb->format,
+											CAM_SW_JPEG_QUALITY, &jpg_buf, &jpg_len);
+					if (ok && jpg_buf && jpg_len > 0)
+					{
+						ws_broadcast_binary_sync(server, jpg_buf, jpg_len);
+						free(jpg_buf);
+					}
+					else
+					{
+						if (jpg_buf)
+							free(jpg_buf);
+						ws_broadcast_raw_rgb565_from_fb(server, fb);
+					}
+				}
+#endif
 				esp_camera_fb_return(fb);
 			}
 			vTaskDelay(pdMS_TO_TICKS(frame_interval_ms()));
